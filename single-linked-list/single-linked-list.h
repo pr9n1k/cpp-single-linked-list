@@ -98,7 +98,7 @@ class SingleLinkedList {
         // приводит к неопределённому поведению
         BasicIterator operator++(int) noexcept {
             auto old_node(*this);
-            ++node_;
+            ++(*this);
             return old_node;
         }
 
