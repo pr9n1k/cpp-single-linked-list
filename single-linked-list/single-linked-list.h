@@ -25,7 +25,7 @@ class SingleLinkedList {
         friend class SingleLinkedList;
 
         // Конвертирующий конструктор итератора из указателя на узел списка
-        explicit BasicIterator(Node* node): node_(node) {}
+        explicit BasicIterator(Node* node) : node_(node) {}
 
     public:
         // Объявленные ниже типы сообщают стандартной библиотеке о свойствах этого итератора
@@ -62,19 +62,20 @@ class SingleLinkedList {
             return this->node_ == rhs.node_;
         }
 
-        // Оператор проверки итераторов на неравенство
-        // Противоположен !=
-        [[nodiscard]] bool operator!=(const BasicIterator<const Type>& rhs) const noexcept {
-            return this->node_ != rhs.node_;
-            // Заглушка. Реализуйте оператор самостоятельно
-        }
-
         // Оператор сравнения итераторов (в роли второго аргумента итератор)
         // Два итератора равны, если они ссылаются на один и тот же элемент списка либо на end()
         [[nodiscard]] bool operator==(const BasicIterator<Type>& rhs) const noexcept {
             return this->node_ == rhs.node_;
             // Заглушка. Реализуйте оператор самостоятельно
         }
+
+        // Оператор проверки итераторов на неравенство
+        // Противоположен !=
+        [[nodiscard]] bool operator!=(const BasicIterator<const Type>& rhs) const noexcept {
+            return !(this->node_ == rhs.node_);
+            // Заглушка. Реализуйте оператор самостоятельно
+        }
+
 
         // Оператор проверки итераторов на неравенство
         // Противоположен !=
@@ -97,7 +98,7 @@ class SingleLinkedList {
         // приводит к неопределённому поведению
         BasicIterator operator++(int) noexcept {
             auto old_node(*this);
-            node_ = node_->next_node;
+            ++node_;
             return old_node;
         }
 
@@ -136,15 +137,7 @@ public:
     // Константный итератор, предоставляющий доступ для чтения к элементам списка
     using ConstIterator = BasicIterator<const Type>;
 
-    template <typename InitIterator>
-    void Init(InitIterator begin, InitIterator end) {
-        Node* node = &head_;
-        for (InitIterator i = begin; i != end; ++i) {
-            ++size_;
-            node->next_node = new Node(*i, nullptr);
-            node = node->next_node;
-        }
-    }
+
 
     SingleLinkedList(std::initializer_list<Type> values) {
         // Реализуйте конструктор самостоятельно
@@ -236,11 +229,8 @@ public:
 
     // Очищает список за время O(N)
     void Clear() noexcept {
-        while (head_.next_node != nullptr) {
-            Node* delete_node = head_.next_node;
-            head_.next_node = delete_node->next_node;
-            delete delete_node;
-            --size_;
+        while (!IsEmpty()) {
+            PopFront();
         }
     }
 
@@ -248,7 +238,7 @@ public:
     // Разыменовывать этот итератор нельзя - попытка разыменования приведёт к неопределённому поведению
     [[nodiscard]] Iterator before_begin() noexcept {
         // Реализуйте самостоятельно
-        return Iterator{&head_};
+        return Iterator{ &head_ };
     }
 
     // Возвращает константный итератор, указывающий на позицию перед первым элементом односвязного списка.
@@ -280,10 +270,11 @@ public:
 
     void PopFront() noexcept {
         assert(IsEmpty() == 0);
-        --size_;
+        EraseAfter(cbefore_begin());
+      /*  --size_;
         Node* helper = head_.next_node->next_node;
         delete head_.next_node;
-        head_.next_node = helper;
+        head_.next_node = helper;*/
     }
 
     /*
@@ -293,9 +284,12 @@ public:
     Iterator EraseAfter(ConstIterator pos) noexcept {
         assert(IsEmpty() == 0);
         --size_;
-        Node* helper = pos.node_->next_node->next_node;
-        delete pos.node_->next_node;
-        pos.node_->next_node = helper;
+        //Node* helper = pos.node_->next_node->next_node;
+        //delete pos.node_->next_node;
+        //pos.node_->next_node = helper;
+        Node* node_del = pos.node_->next_node;
+        std::exchange(pos.node_->next_node, node_del->next_node);
+        delete node_del;
         return Iterator{ pos.node_->next_node };
     }
 
@@ -303,6 +297,16 @@ private:
     // Фиктивный узел, используется для вставки "перед первым элементом"
     Node head_;
     size_t size_ = 0;
+
+    template <typename InitIterator>
+    void Init(InitIterator begin, InitIterator end) {
+        Node* node = &head_;
+        for (InitIterator i = begin; i != end; ++i) {
+            ++size_;
+            node->next_node = new Node(*i, nullptr);
+            node = node->next_node;
+        }
+    }
 };
 
 template <typename Type>
@@ -329,9 +333,7 @@ bool operator<(const SingleLinkedList<Type>& lhs, const SingleLinkedList<Type>& 
 
 template <typename Type>
 bool operator>(const SingleLinkedList<Type>& lhs, const SingleLinkedList<Type>& rhs) {
-    return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), lhs.end(), [](auto lhs_item, auto rhs_item) {
-        return lhs_item > rhs_item;
-        });
+    return rhs < lhs;
 }
 
 template <typename Type>
